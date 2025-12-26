@@ -2,80 +2,76 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>SRT Sync & Editor</title>
+    <title>SRT Editor + Drag & Drop</title>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
-        .controls { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
-        table { width: 100%; border-collapse: collapse; background: white; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        th { background: #eee; position: sticky; top: 0; }
-        .time-col { width: 150px; font-family: monospace; }
-        .edit-cell { outline: none; min-height: 1.2em; }
-        .edit-cell:focus { background: #fffde7; border: 1px solid #ffd600; }
-        button { padding: 8px 16px; cursor: pointer; border-radius: 4px; border: 1px solid #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; background: #eceff1; }
+        .controls { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; gap: 15px; align-items: center; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; }
+        th { background: #546e7a; color: white; }
+        .handle { cursor: grab; color: #999; font-size: 20px; width: 30px; text-align: center; }
+        .time-col { width: 180px; font-family: 'Courier New', monospace; color: #2c3e50; font-weight: bold; }
+        .edit-cell { outline: none; padding: 8px; border-radius: 4px; transition: background 0.2s; }
+        .edit-cell:focus { background: #fffde7; box-shadow: inset 0 0 0 1px #ffd600; }
+        /* Стили при перетаскивании */
+        .sortable-ghost { opacity: 0.4; background: #cfd8dc !important; }
+        .sortable-chosen { background: #f5f5f5; }
+
+        button { padding: 10px 20px; border: none; border-radius: 4px; background: #1e88e5; color: white; cursor: pointer; font-weight: 600; }
+        button:hover { background: #1565c0; }
+        input[type="file"] { font-size: 14px; }
     </style>
 </head>
 <body>
-
-<h2>Синхронизатор субтитров</h2>
 
 <div class="controls">
     <input type="file" id="file1" accept=".srt">
     <input type="file" id="file2" accept=".srt">
     <button onclick="processFiles()">Синхронизировать</button>
-    <button onclick="exportCombinedSRT()">Сохранить результат (SRT)</button>
+    <button style="background: #43a047;" onclick="exportCombinedSRT()">Скачать SRT</button>
 </div>
 
 <table id="subsTable">
     <thead>
     <tr>
-        <th>Время (Начало --> Конец)</th>
-        <th>Субтитр 1 (Оригинал)</th>
-        <th>Субтитр 2 (Перевод)</th>
+        <th></th> <th>Время</th>
+        <th>Субтитр 1</th>
+        <th>Субтитр 2</th>
     </tr>
     </thead>
-    <tbody>
+    <tbody id="tableBody">
     </tbody>
 </table>
 
 <script>
     let subtitlesData = [];
 
-    // Функция парсинга SRT
-    function parseSRT(data) {
-        const items = [];
-        const blocks = data.trim().split(/\n\s*\n/);
-        blocks.forEach(block => {
-            const lines = block.split('\n');
-            if (lines.length >= 3) {
-                const timeMatch = lines[1].match(/(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})/);
-                if (timeMatch) {
-                    items.push({
-                        time: timeMatch[0],
-                        start: timeMatch[1],
-                        end: timeMatch[2],
-                        text: lines.slice(2).join('\n')
-                    });
-                }
-            }
-        });
-        return items;
-    }
+    // Инициализация Drag & Drop
+    const el = document.getElementById('tableBody');
+    Sortable.create(el, {
+        animation: 150,
+        handle: '.handle', // тянуть можно только за иконку
+        ghostClass: 'sortable-ghost',
+        onEnd: function (evt) {
+            // При перемещении строки меняем порядок в нашем массиве данных
+            const item = subtitlesData.splice(evt.oldIndex, 1)[0];
+            subtitlesData.splice(evt.newIndex, 0, item);
+            console.log("Новый порядок сохранен");
+        }
+    });
 
     async function processFiles() {
         const f1 = document.getElementById('file1').files[0];
         const f2 = document.getElementById('file2').files[0];
-
         if (!f1 || !f2) return alert("Выберите оба файла");
 
-        const text1 = await f1.text();
-        const text2 = await f2.text();
+        const [text1, text2] = await Promise.all([f1.text(), f2.text()]);
 
         const subs1 = parseSRT(text1);
         const subs2 = parseSRT(text2);
 
-        // Простая логика синхронизации: берем тайминги из 1-го файла
-        // и ищем ближайший по времени блок из 2-го файла
+        // Синхронизация по времени (как в прошлом примере)
         subtitlesData = subs1.map(s1 => {
             const match = subs2.find(s2 => Math.abs(timeToMs(s1.start) - timeToMs(s2.start)) < 2000);
             return {
@@ -88,6 +84,18 @@
         renderTable();
     }
 
+    function parseSRT(data) {
+        return data.trim().split(/\n\s*\n/).map(block => {
+            const lines = block.split('\n');
+            const timeMatch = lines[1]?.match(/(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})/);
+            return timeMatch ? {
+                time: timeMatch[0],
+                start: timeMatch[1],
+                text: lines.slice(2).join('\n')
+            } : null;
+        }).filter(Boolean);
+    }
+
     function timeToMs(t) {
         const [h, m, s] = t.split(':');
         const [sec, ms] = s.split(',');
@@ -95,12 +103,13 @@
     }
 
     function renderTable() {
-        const tbody = document.querySelector('#subsTable tbody');
+        const tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
         subtitlesData.forEach((item, index) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="time-col">${item.time}</td>
+                <td class="handle">⋮⋮</td>
+                <td class="time-col" contenteditable="true" oninput="updateData(${index}, 'time', this.innerText)">${item.time}</td>
                 <td class="edit-cell" contenteditable="true" oninput="updateData(${index}, 'text1', this.innerText)">${item.text1}</td>
                 <td class="edit-cell" contenteditable="true" oninput="updateData(${index}, 'text2', this.innerText)">${item.text2}</td>
             `;
@@ -115,14 +124,14 @@
     function exportCombinedSRT() {
         let output = "";
         subtitlesData.forEach((item, i) => {
+            // Формат: Текст1 <разделитель> Текст2
             output += `${i + 1}\n${item.time}\n${item.text1}\n---\n${item.text2}\n\n`;
         });
 
         const blob = new Blob([output], {type: "text/plain"});
-        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = "combined_subtitles.srt";
+        a.href = URL.createObjectURL(blob);
+        a.download = "synced_subtitles.srt";
         a.click();
     }
 </script>
