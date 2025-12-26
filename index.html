@@ -2,94 +2,103 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Professional SRT Independent Editor</title>
+    <title>Professional SRT Editor & Syncer</title>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         :root {
-            --bg: #f4f7f6;
+            --bg: #f0f2f5;
             --panel: #ffffff;
             --time-color: #673ab7;
             --sub1-color: #007bff;
             --sub2-color: #28a745;
+            --accent: #ffc107;
         }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
 
         .header-controls {
             background: var(--panel); padding: 20px; border-radius: 12px;
             display: flex; gap: 20px; align-items: flex-end;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px;
+            position: sticky; top: 10px; z-index: 100;
         }
 
-        .file-input-group { display: flex; flex-direction: column; gap: 5px; }
-        .file-input-group label { font-size: 12px; font-weight: bold; color: #666; }
+        .file-input-group { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+        .file-input-group label { font-size: 12px; font-weight: bold; color: #555; text-transform: uppercase; }
+        input[type="file"] { font-size: 13px; }
 
         .editor-container { display: flex; gap: 15px; align-items: flex-start; }
 
         .column {
-            background: #e9ecef; border-radius: 10px; flex: 1;
+            background: #e2e8f0; border-radius: 12px; flex: 1;
             min-height: 80vh; display: flex; flex-direction: column;
-            border: 1px solid #dee2e6;
+            border: 1px solid #cbd5e0;
         }
+
         .col-header {
             padding: 15px; text-align: center; color: white;
-            font-weight: bold; border-radius: 10px 10px 0 0;
-            position: sticky; top: 0; z-index: 10;
+            font-weight: bold; border-radius: 12px 12px 0 0;
+            font-size: 14px;
         }
         .col-time { background: var(--time-color); }
         .col-sub1 { background: var(--sub1-color); }
         .col-sub2 { background: var(--sub2-color); }
 
-        .list-container { padding: 10px; min-height: 100px; }
+        .list-container { padding: 10px; min-height: 200px; }
 
-        /* Карточка ячейки */
+        /* Стили ячейки */
         .cell {
-            background: white; border-radius: 6px; padding: 10px;
-            margin-bottom: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.08);
-            display: flex; align-items: flex-start; gap: 8px;
-            border: 1px solid transparent; transition: 0.2s;
+            background: white; border-radius: 8px; padding: 12px;
+            margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            display: flex; align-items: flex-start; gap: 10px;
+            border: 1px solid transparent; transition: all 0.2s;
         }
-        .cell:hover { border-color: #adb5bd; }
+        .cell:hover { border-color: #a0aec0; transform: translateY(-1px); }
 
-        .handle { cursor: grab; color: #ced4da; font-size: 20px; line-height: 1; padding-top: 2px; }
+        .handle { cursor: grab; color: #cbd5e0; font-size: 22px; user-select: none; line-height: 1; }
         .content {
             flex: 1; outline: none; min-height: 1.5em;
-            font-size: 14px; line-height: 1.4; word-break: break-word;
-            white-space: pre-wrap; /* Сохраняет переносы внутри субтитра */
+            font-size: 14px; line-height: 1.5; color: #2d3748;
+            word-break: break-word; white-space: pre-wrap;
         }
 
         .btn-del {
-            background: none; border: none; color: #ffc107; cursor: pointer;
-            font-size: 16px; padding: 0 5px; transition: 0.2s;
+            background: #fff5f5; border: none; color: #fc8181; cursor: pointer;
+            font-size: 16px; width: 24px; height: 24px; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center; transition: 0.2s;
         }
-        .btn-del:hover { color: #dc3545; transform: scale(1.2); }
+        .btn-del:hover { background: #feb2b2; color: white; }
 
         .main-btn {
-            background: #212529; color: white; border: none; padding: 10px 20px;
-            border-radius: 6px; cursor: pointer; font-weight: 600;
+            background: #2d3748; color: white; border: none; padding: 12px 24px;
+            border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s;
         }
-        .save-btn { background: #28a745; }
+        .main-btn:hover { background: #1a202c; }
+        .save-btn { background: #38a169; }
+        .save-btn:hover { background: #2f855a; }
 
-        .sortable-ghost { opacity: 0.2; background: #343a40 !important; }
+        .sortable-ghost { opacity: 0.1; background: #2d3748 !important; }
+        .sortable-chosen { box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
 
 <div class="header-controls">
     <div class="file-input-group">
-        <label>Файл 1 (Оригинал)</label>
+        <label>Файл 1 (Оригинал или Сохраненный)</label>
         <input type="file" id="file1" accept=".srt">
     </div>
     <div class="file-input-group">
-        <label>Файл 2 (Перевод)</label>
+        <label>Файл 2 (Перевод - опционально)</label>
         <input type="file" id="file2" accept=".srt">
     </div>
-    <button class="main-btn" onclick="loadFiles()">Загрузить данные</button>
-    <button class="main-btn save-btn" onclick="exportCombined()">Сохранить результат</button>
+    <button class="main-btn" onclick="loadFiles()">Загрузить</button>
+    <button class="main-btn save-btn" onclick="exportCombined()">Скачать результат</button>
 </div>
 
 <div class="editor-container">
     <div class="column">
-        <div class="col-header col-time">Время</div>
+        <div class="col-header col-time">Таймкоды</div>
         <div id="list-time" class="list-container"></div>
     </div>
     <div class="column">
@@ -103,30 +112,27 @@
 </div>
 
 <script>
-    // Инициализация перетаскивания для каждой колонки
-    const options = {
+    // Инициализация Drag & Drop для каждой колонки
+    const sortOptions = {
         animation: 150,
         handle: '.handle',
-        ghostClass: 'sortable-ghost'
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen'
     };
-    Sortable.create(document.getElementById('list-time'), options);
-    Sortable.create(document.getElementById('list-sub1'), options);
-    Sortable.create(document.getElementById('list-sub2'), options);
+    Sortable.create(document.getElementById('list-time'), sortOptions);
+    Sortable.create(document.getElementById('list-sub1'), sortOptions);
+    Sortable.create(document.getElementById('list-sub2'), sortOptions);
 
-    // Улучшенный парсер SRT
+    // Универсальный парсер SRT
     function parseSRT(data) {
-        // Убираем BOM и нормализуем переносы строк
+        // Очистка от BOM и нормализация переносов строк
         const cleanData = data.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-        // Регулярное выражение ищет:
-        // 1. Цифры (индекс)
-        // 2. Таймкод (00:00:00,000 --> 00:00:00,000)
-        // 3. Весь текст до следующего индекса или конца файла
+        // Регулярное выражение для поиска блоков субтитров
         const regex = /(\d+)\n(\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3})\n([\s\S]*?)(?=\n\d+\n\d{2}:\d{2}:\d{2},\d{3} -->|\n\s*$|$)/g;
 
         const results = [];
         let match;
-
         while ((match = regex.exec(cleanData)) !== null) {
             results.push({
                 time: match[2].trim(),
@@ -139,7 +145,8 @@
     async function loadFiles() {
         const f1 = document.getElementById('file1').files[0];
         const f2 = document.getElementById('file2').files[0];
-        if (!f1) return alert("Выберите хотя бы первый файл");
+
+        if (!f1) return alert("Пожалуйста, выберите файл для загрузки.");
 
         const text1 = await f1.text();
         const subs1 = parseSRT(text1);
@@ -154,26 +161,39 @@
         const containerSub1 = document.getElementById('list-sub1');
         const containerSub2 = document.getElementById('list-sub2');
 
+        // Очистка перед загрузкой
         containerTime.innerHTML = '';
         containerSub1.innerHTML = '';
         containerSub2.innerHTML = '';
 
-        // Заполняем колонки
-        subs1.forEach((s1, index) => {
-            containerTime.appendChild(createCell(s1.time));
-            containerSub1.appendChild(createCell(s1.text));
+        // ПРОВЕРКА: Является ли первый файл уже "склеенным" проектом?
+        const isCombined = subs1.some(s => s.text.includes('---'));
 
-            // Если во втором файле есть субтитр с таким же индексом/порядком
-            const s2Text = subs2[index] ? subs2[index].text : "";
-            containerSub2.appendChild(createCell(s2Text));
-        });
+        if (isCombined && !f2) {
+            // Разбираем комбинированный файл
+            subs1.forEach(s => {
+                const parts = s.text.split('---');
+                containerTime.appendChild(createCell(s.time));
+                containerSub1.appendChild(createCell(parts[0] ? parts[0].trim() : ""));
+                containerSub2.appendChild(createCell(parts[1] ? parts[1].trim() : ""));
+            });
+        } else {
+            // Классическая загрузка двух разных файлов
+            subs1.forEach((s1, index) => {
+                containerTime.appendChild(createCell(s1.time));
+                containerSub1.appendChild(createCell(s1.text));
 
-        // Если во втором файле субтитров БОЛЬШЕ, чем в первом
-        if (subs2.length > subs1.length) {
-            for (let i = subs1.length; i < subs2.length; i++) {
-                containerTime.appendChild(createCell("00:00:00,000 --> 00:00:00,000"));
-                containerSub1.appendChild(createCell(""));
-                containerSub2.appendChild(createCell(subs2[i].text));
+                const s2Text = subs2[index] ? subs2[index].text : "";
+                containerSub2.appendChild(createCell(s2Text));
+            });
+
+            // Если во втором файле больше строк, чем в первом
+            if (subs2.length > subs1.length) {
+                for (let i = subs1.length; i < subs2.length; i++) {
+                    containerTime.appendChild(createCell("00:00:00,000 --> 00:00:00,000"));
+                    containerSub1.appendChild(createCell(""));
+                    containerSub2.appendChild(createCell(subs2[i].text));
+                }
             }
         }
     }
@@ -202,13 +222,14 @@
             const text1Val = s1[i] ? s1[i].innerText.trim() : "";
             const text2Val = s2[i] ? s2[i].innerText.trim() : "";
 
+            // Формируем блок SRT с разделителем для будущего открытия
             output += `${i + 1}\n${timeVal}\n${text1Val}\n---\n${text2Val}\n\n`;
         }
 
-        const blob = new Blob([output], { type: 'text/plain' });
+        const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = "final_subtitles.srt";
+        a.download = "synced_project.srt";
         a.click();
     }
 </script>
