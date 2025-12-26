@@ -2,96 +2,127 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Grid-Aligned SRT Editor</title>
+    <title>Resizable Independent SRT Editor</title>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         :root {
             --border-color: #cbd5e0;
             --time-bg: #f8f9fa;
+            --header-bg: #2d3748;
         }
         body { font-family: 'Segoe UI', sans-serif; background: #edf2f7; padding: 20px; margin: 0; }
 
         .top-bar {
-            background: white; padding: 20px; border-radius: 12px;
+            background: white; padding: 15px 20px; border-radius: 12px;
             display: flex; gap: 20px; margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05); align-items: flex-end;
         }
 
-        /* Контейнер таблицы */
-        .grid-editor {
+        /* Главный контейнер сетки */
+        .grid-wrapper {
             display: grid;
-            grid-template-columns: 220px 1fr 1fr; /* Фиксированная ширина для времени, остальное поровну */
+            /* Начальные веса столбцов */
+            grid-template-columns: 200px 1fr 1fr;
             background: white;
             border-radius: 12px;
-            overflow: hidden;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
         }
 
+        /* Заголовки */
         .col-header {
-            background: #2d3748; color: white; padding: 15px;
-            font-weight: bold; text-align: center; border-bottom: 2px solid #1a202c;
+            background: var(--header-bg);
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            text-align: center;
+            position: relative; /* Для позиционирования ресайзера */
+            user-select: none;
         }
 
-        /* Списки (колонки) */
+        /* Полоса для изменения размера */
+        .resizer {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 5px;
+            height: 100%;
+            cursor: col-resize;
+            background: transparent;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+        .resizer:hover, .resizer.resizing {
+            background: #4299e1;
+            width: 5px;
+        }
+
+        /* Колонки */
         .column-list {
-            display: flex; flex-direction: column;
-            min-height: 500px; background: white;
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+            background: white;
+            border-right: 1px solid var(--border-color);
         }
+        .column-list:last-child { border-right: none; }
 
-        /* Каждая ячейка */
+        /* Ячейки */
         .cell {
             border-bottom: 1px solid #e2e8f0;
             padding: 10px;
-            min-height: 80px; /* Гарантирует выравнивание, если текста мало */
+            min-height: 70px; /* Выравнивание по высоте */
             display: flex;
             align-items: flex-start;
             gap: 8px;
             background: white;
-            transition: background 0.2s;
         }
-        .cell:hover { background: #f7fafc; }
+        #list-time .cell { background: var(--time-bg); }
 
-        /* Специальный стиль для колонки времени */
-        #list-time .cell { background: var(--time-bg); border-right: 1px solid var(--border-color); }
-        #list-sub1 .cell { border-right: 1px solid var(--border-color); }
-
-        .handle { cursor: grab; color: #a0aec0; font-size: 20px; padding-top: 2px; }
+        .handle { cursor: grab; color: #a0aec0; font-size: 20px; }
         .content {
             flex: 1; outline: none; font-size: 14px; line-height: 1.5;
-            white-space: pre-wrap; word-break: break-word;
+            white-space: pre-wrap; word-break: break-word; color: #2d3748;
         }
 
         .btn-del {
             border: none; background: none; color: #cbd5e0; cursor: pointer;
-            font-size: 14px; padding: 5px;
+            font-size: 14px; transition: 0.2s;
         }
         .btn-del:hover { color: #e53e3e; }
 
-        .sortable-ghost { opacity: 0.3; background: #ebf8ff !important; }
+        .sortable-ghost { opacity: 0.2; background: #ebf8ff !important; }
 
         button.btn-main {
             background: #4a5568; color: white; border: none; padding: 10px 20px;
             border-radius: 6px; cursor: pointer; font-weight: bold;
         }
         button.btn-save { background: #38a169; }
+        input[type="file"] { font-size: 12px; }
     </style>
 </head>
 <body>
 
 <div class="top-bar">
-    <div style="flex:1">
-        <label style="font-size:12px; font-weight:bold; display:block">Файлы (SRT)</label>
-        <input type="file" id="file1">
-        <input type="file" id="file2">
+    <div style="flex:1; display:flex; gap:10px">
+        <div>
+            <label style="font-size:11px; font-weight:bold; display:block">Файл 1</label>
+            <input type="file" id="file1">
+        </div>
+        <div>
+            <label style="font-size:11px; font-weight:bold; display:block">Файл 2 (опц.)</label>
+            <input type="file" id="file2">
+        </div>
     </div>
     <button class="btn-main" onclick="loadFiles()">Загрузить</button>
     <button class="btn-main btn-save" onclick="exportSRT()">Сохранить результат</button>
 </div>
 
-<div class="grid-editor">
-    <div class="col-header">Таймкоды</div>
-    <div class="col-header">Субтитр 1</div>
+<div class="grid-wrapper" id="mainGrid">
+    <div class="col-header">Таймкоды <div class="resizer"></div></div>
+    <div class="col-header">Субтитр 1 <div class="resizer"></div></div>
     <div class="col-header">Субтитр 2</div>
 
     <div id="list-time" class="column-list"></div>
@@ -100,18 +131,64 @@
 </div>
 
 <script>
-    // Настройка независимого перемещения для каждой колонки
-    const config = {
+    // --- ИНИЦИАЛИЗАЦИЯ DRAG & DROP ---
+    const sortParams = {
         animation: 150,
         handle: '.handle',
-        ghostClass: 'sortable-ghost',
-        // Мы НЕ используем 'group', чтобы ячейки нельзя было перетащить в чужую колонку
+        ghostClass: 'sortable-ghost'
     };
+    Sortable.create(document.getElementById('list-time'), sortParams);
+    Sortable.create(document.getElementById('list-sub1'), sortParams);
+    Sortable.create(document.getElementById('list-sub2'), sortParams);
 
-    Sortable.create(document.getElementById('list-time'), config);
-    Sortable.create(document.getElementById('list-sub1'), config);
-    Sortable.create(document.getElementById('list-sub2'), config);
+    // --- ЛОГИКА ИЗМЕНЕНИЯ ШИРИНЫ СТОЛБЦОВ ---
+    const grid = document.getElementById('mainGrid');
+    const resizers = document.querySelectorAll('.resizer');
+    let currentResizer;
 
+    resizers.forEach((resizer, index) => {
+        resizer.addEventListener('mousedown', (e) => {
+            currentResizer = {
+                index,
+                startX: e.pageX,
+                startWidths: getColumnWidths()
+            };
+            resizer.classList.add('resizing');
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            e.preventDefault();
+        });
+    });
+
+    function getColumnWidths() {
+        const style = window.getComputedStyle(grid);
+        return style.getPropertyValue('grid-template-columns').split(' ').map(w => parseFloat(w));
+    }
+
+    function onMouseMove(e) {
+        if (!currentResizer) return;
+
+        const delta = e.pageX - currentResizer.startX;
+        const widths = [...currentResizer.startWidths];
+
+        // Меняем ширину текущего столбца и следующего за ним
+        widths[currentResizer.index] += delta;
+        // Чтобы общая ширина не скакала, мы не трогаем остальные,
+        // браузер сам пересчитает '1fr'. Но для точности фиксируем:
+        const newTemplate = widths.map((w, i) => i === 2 ? '1fr' : `${w}px`).join(' ');
+        grid.style.gridTemplateColumns = newTemplate;
+    }
+
+    function onMouseUp() {
+        if (currentResizer) {
+            document.querySelectorAll('.resizer').forEach(r => r.classList.remove('resizing'));
+            currentResizer = null;
+        }
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    // --- ПАРСИНГ И ЗАГРУЗКА ---
     function parseSRT(data) {
         const cleanData = data.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
         const regex = /(\d+)\n(\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3})\n([\s\S]*?)(?=\n\d+\n\d{2}:\d{2}:\d{2},\d{3} -->|\n\s*$|$)/g;
@@ -126,7 +203,7 @@
     async function loadFiles() {
         const f1 = document.getElementById('file1').files[0];
         const f2 = document.getElementById('file2').files[0];
-        if (!f1) return alert("Загрузите хотя бы один файл");
+        if (!f1) return alert("Загрузите файл");
 
         const t1 = await f1.text();
         const subs1 = parseSRT(t1);
@@ -138,21 +215,19 @@
 
         cT.innerHTML = c1.innerHTML = c2.innerHTML = '';
 
-        // Если файл один и содержит разделитель ---
-        const combined = subs1.some(s => s.text.includes('---'));
+        const isCombined = subs1.some(s => s.text.includes('---'));
+        const rowsCount = Math.max(subs1.length, subs2.length);
 
-        const maxRows = Math.max(subs1.length, subs2.length);
-
-        for(let i = 0; i < maxRows; i++) {
-            if (combined && !f2) {
+        for(let i = 0; i < rowsCount; i++) {
+            if (isCombined && !f2) {
                 const parts = subs1[i].text.split('---');
                 cT.appendChild(createCell(subs1[i].time));
-                c1.appendChild(createCell(parts[0] ? parts[0].trim() : ""));
-                c2.appendChild(createCell(parts[1] ? parts[1].trim() : ""));
+                c1.appendChild(createCell(parts[0]?.trim() || ""));
+                c2.appendChild(createCell(parts[1]?.trim() || ""));
             } else {
-                cT.appendChild(createCell(subs1[i] ? subs1[i].time : "00:00:00,000 --> 00:00:00,000"));
-                c1.appendChild(createCell(subs1[i] ? subs1[i].text : ""));
-                c2.appendChild(createCell(subs2[i] ? subs2[i].text : ""));
+                cT.appendChild(createCell(subs1[i]?.time || "00:00:00,000 --> 00:00:00,000"));
+                c1.appendChild(createCell(subs1[i]?.text || ""));
+                c2.appendChild(createCell(subs2[i]?.text || ""));
             }
         }
     }
@@ -163,7 +238,7 @@
         div.innerHTML = `
             <span class="handle">⠿</span>
             <div class="content" contenteditable="true">${content}</div>
-            <button class="btn-del" onclick="this.parentElement.remove()">✕</button>
+            <button class="btn-del" title="Удалить" onclick="this.parentElement.remove()">✕</button>
         `;
         return div;
     }
@@ -172,21 +247,18 @@
         const t = document.querySelectorAll('#list-time .content');
         const s1 = document.querySelectorAll('#list-sub1 .content');
         const s2 = document.querySelectorAll('#list-sub2 .content');
-
         const max = Math.max(t.length, s1.length, s2.length);
         let out = "";
-
         for (let i = 0; i < max; i++) {
-            const time = t[i] ? t[i].innerText.trim() : "00:00:00,000 --> 00:00:00,000";
-            const txt1 = s1[i] ? s1[i].innerText.trim() : "";
-            const txt2 = s2[i] ? s2[i].innerText.trim() : "";
+            const time = t[i]?.innerText.trim() || "00:00:00,000 --> 00:00:00,000";
+            const txt1 = s1[i]?.innerText.trim() || "";
+            const txt2 = s2[i]?.innerText.trim() || "";
             out += `${i+1}\n${time}\n${txt1}\n---\n${txt2}\n\n`;
         }
-
         const blob = new Blob([out], {type: 'text/plain'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = "aligned_subtitles.srt";
+        a.download = "resized_subtitles.srt";
         a.click();
     }
 </script>
