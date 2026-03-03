@@ -12,7 +12,13 @@
             --accent: #4299e1;
             --blur-val: 10px;
         }
-        body { font-family: 'Segoe UI', sans-serif; background: #edf2f7; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #edf2f7;
+            margin: 0;
+            padding: 0;
+        }
 
         /* --- ЗАКРЕПЛЕНИЕ ПАНЕЛИ УПРАВЛЕНИЯ --- */
         .top-bar {
@@ -23,7 +29,7 @@
             padding: 15px 20px;
             display: flex;
             gap: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             align-items: center;
         }
 
@@ -45,7 +51,7 @@
             border-left: 1px solid var(--border-color);
             border-right: 1px solid var(--border-color);
             margin: 0 20px 20px 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
         }
 
         .col-header {
@@ -59,29 +65,135 @@
         }
 
         /* --- СТИЛИ КОЛОНОК И БЛЮРА --- */
-        .column-list { display: flex; flex-direction: column; min-height: 100vh; background: white; border-right: 1px solid var(--border-color); }
-        .column-list.global-blur .content { filter: blur(var(--blur-val)); }
-        .cell.force-blur .content { filter: blur(var(--blur-val)) !important; }
-        .cell.force-unblur .content { filter: blur(0) !important; }
+        .column-list {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background: white;
+            border-right: 1px solid var(--border-color);
+        }
 
-        .content { transition: filter 0.2s ease; outline: none; min-height: 1.5em; flex: 1; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-        .content[contenteditable="false"] { cursor: pointer; user-select: none; }
+        .column-list.global-blur .content {
+            filter: blur(var(--blur-val));
+        }
 
-        .cell { border-bottom: 1px solid #e2e8f0; padding: 10px; min-height: 70px; display: flex; align-items: flex-start; gap: 8px; position: relative; background: white; }
-        #list-time .cell { background: var(--time-bg); }
+        .cell.force-blur .content {
+            filter: blur(var(--blur-val)) !important;
+        }
 
-        .resizer { position: absolute; right: 0; top: 0; width: 6px; height: 100%; cursor: col-resize; z-index: 10; }
-        .resizer:hover { background: var(--accent); }
+        .cell.force-unblur .content {
+            filter: blur(0) !important;
+        }
 
-        .handle { cursor: grab; color: #a0aec0; font-size: 20px; padding-top: 5px; }
-        .btn-del { border: none; background: none; color: #cbd5e0; cursor: pointer; font-size: 14px; padding: 5px; }
-        .btn-del:hover { color: #e53e3e; }
-        .btn-main { background: #4a5568; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .blur-toggle-btn { background: none; border: none; color: white; cursor: pointer; margin-left: 8px; font-size: 16px; opacity: 0.6; }
-        .blur-toggle-btn.active { color: var(--accent); opacity: 1; }
+        .content {
+            transition: filter 0.2s ease;
+            outline: none;
+            min-height: 1.5em;
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
 
-        #format-menu { position: absolute; display: none; background: #2d3748; color: white; padding: 5px; border-radius: 6px; z-index: 2000; gap: 5px; }
-        #format-menu button { background: transparent; border: none; color: white; padding: 5px 10px; cursor: pointer; font-weight: bold; }
+        .content[contenteditable="false"] {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .cell {
+            border-bottom: 1px solid #e2e8f0;
+            padding: 10px;
+            min-height: 70px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            position: relative;
+            background: white;
+        }
+
+        #list-time .cell {
+            background: var(--time-bg);
+        }
+
+        .resizer {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 6px;
+            height: 100%;
+            cursor: col-resize;
+            z-index: 10;
+        }
+
+        .resizer:hover {
+            background: var(--accent);
+        }
+
+        .handle {
+            cursor: grab;
+            color: #a0aec0;
+            font-size: 20px;
+            padding-top: 5px;
+        }
+
+        .btn-del {
+            border: none;
+            background: none;
+            color: #cbd5e0;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 5px;
+        }
+
+        .btn-del:hover {
+            color: #e53e3e;
+        }
+
+        .btn-main {
+            background: #4a5568;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .blur-toggle-btn {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            margin-left: 8px;
+            font-size: 16px;
+            opacity: 0.6;
+        }
+
+        .blur-toggle-btn.active {
+            color: var(--accent);
+            opacity: 1;
+        }
+
+        #format-menu {
+            position: absolute;
+            display: none;
+            background: #2d3748;
+            color: white;
+            padding: 5px;
+            border-radius: 6px;
+            z-index: 2000;
+            gap: 5px;
+        }
+
+        #format-menu button {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -101,16 +213,21 @@
             </span>
     </div>
     <button class="btn-main" style="background:#38a169" onclick="exportSRT()">Save result</button>
+    <button class="btn-main" style="background:#4c51bf" onclick="exportToAnkiText()">Anki Text Export</button>
 </div>
 
 <div class="grid-header-row" id="headerGrid">
-    <div class="col-header">Timecodes <div class="resizer"></div></div>
-    <div class="col-header">
-        Subtitle 1 <button class="blur-toggle-btn" onclick="toggleColumnBlur('list-sub1', this)">👁</button>
+    <div class="col-header">Timecodes
         <div class="resizer"></div>
     </div>
     <div class="col-header">
-        Subtitle 2 <button class="blur-toggle-btn" onclick="toggleColumnBlur('list-sub2', this)">👁</button>
+        Subtitle 1
+        <button class="blur-toggle-btn" onclick="toggleColumnBlur('list-sub1', this)">👁</button>
+        <div class="resizer"></div>
+    </div>
+    <div class="col-header">
+        Subtitle 2
+        <button class="blur-toggle-btn" onclick="toggleColumnBlur('list-sub2', this)">👁</button>
     </div>
 </div>
 
@@ -182,14 +299,17 @@
     }
 
     // --- ФОРМАТИРОВАНИЕ ---
-    function format(cmd) { document.execCommand(cmd, false, null); }
+    function format(cmd) {
+        document.execCommand(cmd, false, null);
+    }
+
     document.addEventListener('selectionchange', () => {
         const sel = window.getSelection();
         const menu = document.getElementById('format-menu');
         if (sel.toString().length > 0 && sel.anchorNode.parentElement.closest('.content[contenteditable="true"]')) {
             const rect = sel.getRangeAt(0).getBoundingClientRect();
             menu.style.display = 'flex';
-            menu.style.left = `${rect.left + (rect.width/2) - (menu.offsetWidth/2)}px`;
+            menu.style.left = `${rect.left + (rect.width / 2) - (menu.offsetWidth / 2)}px`;
             menu.style.top = `${rect.top + window.scrollY - 45}px`;
         } else menu.style.display = 'none';
     });
@@ -204,12 +324,14 @@
     }
 
     function fillSingle(subs, id) {
-        const c = document.getElementById(id); c.innerHTML = '';
+        const c = document.getElementById(id);
+        c.innerHTML = '';
         subs.forEach(s => c.appendChild(createCell(id === 'list-time' ? s.time : s.text, id === 'list-time')));
     }
 
     function fillAll(subs) {
-        const cT = document.getElementById('list-time'), c1 = document.getElementById('list-sub1'), c2 = document.getElementById('list-sub2');
+        const cT = document.getElementById('list-time'), c1 = document.getElementById('list-sub1'),
+            c2 = document.getElementById('list-sub2');
         cT.innerHTML = c1.innerHTML = c2.innerHTML = '';
         subs.forEach(s => {
             const parts = s.text.split('---');
@@ -222,8 +344,9 @@
     function parseSRT(data) {
         const cleanData = data.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
         const regex = /(\d+)\n(\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3})\n([\s\S]*?)(?=\n\d+\n\d{2}:\d{2}:\d{2},\d{3} -->|\n\s*$|$)/g;
-        const res = []; let m;
-        while ((m = regex.exec(cleanData)) !== null) res.push({ time: m[2].trim(), text: m[3].trim() });
+        const res = [];
+        let m;
+        while ((m = regex.exec(cleanData)) !== null) res.push({time: m[2].trim(), text: m[3].trim()});
         return res;
     }
 
@@ -255,7 +378,7 @@
 
     // Sortable & Drop
     document.querySelectorAll('.column-list').forEach(col => {
-        Sortable.create(col, { animation: 150, handle: '.handle', ghostClass: 'sortable-ghost' });
+        Sortable.create(col, {animation: 150, handle: '.handle', ghostClass: 'sortable-ghost'});
         col.addEventListener('dragover', e => e.preventDefault());
         col.addEventListener('drop', async e => {
             e.preventDefault();
@@ -266,12 +389,51 @@
     });
 
     function exportSRT() {
-        const t = document.querySelectorAll('#list-time .content'), s1 = document.querySelectorAll('#list-sub1 .content'), s2 = document.querySelectorAll('#list-sub2 .content');
-        const max = Math.max(t.length, s1.length, s2.length); let out = "";
+        const t = document.querySelectorAll('#list-time .content'),
+            s1 = document.querySelectorAll('#list-sub1 .content'),
+            s2 = document.querySelectorAll('#list-sub2 .content');
+        const max = Math.max(t.length, s1.length, s2.length);
+        let out = "";
         for (let i = 0; i < max; i++) {
-            out += `${i+1}\n${t[i]?.innerText.trim() || "00:00:00,000 --> 00:00:00,000"}\n${s1[i]?.innerHTML.trim()}\n---\n${s2[i]?.innerHTML.trim()}\n\n`;
+            out += `${i + 1}\n${t[i]?.innerText.trim() || "00:00:00,000 --> 00:00:00,000"}\n${s1[i]?.innerHTML.trim()}\n---\n${s2[i]?.innerHTML.trim()}\n\n`;
         }
-        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([out], {type:'text/plain'})); a.download = "project.srt"; a.click();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([out], {type: 'text/plain'}));
+        a.download = "project.srt";
+        a.click();
+    }
+
+    function exportToAnkiText() {
+        const s1 = document.querySelectorAll('#list-sub1 .content');
+        const s2 = document.querySelectorAll('#list-sub2 .content');
+
+        let exportContent = "";
+        const total = s1.length;
+
+        if (total === 0) return alert("Table is empty!");
+
+        for (let i = 0; i < total; i++) {
+            // Очищаем текст от лишних пробелов, но сохраняем HTML (теги <b>, <i>, <br>)
+            let original = s1[i].innerHTML.trim();
+            let translation = s2[i].innerHTML.trim();
+
+            if (!original && !translation) continue;
+
+            // Экранируем кавычки: если в тексте уже есть ", заменяем их на "" (стандарт CSV)
+            original = original.replace(/"/g, '""');
+            translation = translation.replace(/"/g, '""');
+
+            // Оборачиваем каждое поле в кавычки и разделяем Табуляцией (\t)
+            // Теперь Anki будет видеть "Текст\nс переносом" как одну ячейку
+            exportContent += `"${original}"\t"${translation}"\n`;
+        }
+
+        // Сохраняем файл в кодировке UTF-8 с BOM (чтобы Anki точно не перепутала кодировку)
+        const blob = new Blob(["\ufeff" + exportContent], {type: 'text/plain;charset=utf-8'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "anki_import_fixed.txt";
+        a.click();
     }
 </script>
 </body>
