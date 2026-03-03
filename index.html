@@ -238,8 +238,6 @@
 </div>
 
 <script>
-    // --- УПРАВЛЕНИЕ СОСТОЯНИЕМ ЯЧЕЙКИ ---
-
     function setCellBlurState(cell, shouldBeBlurred) {
         const content = cell.querySelector('.content');
         const col = cell.parentElement;
@@ -298,7 +296,6 @@
         });
     }
 
-    // --- ФОРМАТИРОВАНИЕ ---
     function format(cmd) {
         document.execCommand(cmd, false, null);
     }
@@ -350,7 +347,6 @@
         return res;
     }
 
-    // --- GRID RESIZE LOGIC (Синхронизированный для обоих Grid) ---
     const headerGrid = document.getElementById('headerGrid');
     const mainGrid = document.getElementById('mainGrid');
 
@@ -413,22 +409,17 @@
         if (total === 0) return alert("Table is empty!");
 
         for (let i = 0; i < total; i++) {
-            // Очищаем текст от лишних пробелов, но сохраняем HTML (теги <b>, <i>, <br>)
             let original = s1[i].innerHTML.trim();
             let translation = s2[i].innerHTML.trim();
 
             if (!original && !translation) continue;
 
-            // Экранируем кавычки: если в тексте уже есть ", заменяем их на "" (стандарт CSV)
             original = original.replace(/"/g, '""');
             translation = translation.replace(/"/g, '""');
 
-            // Оборачиваем каждое поле в кавычки и разделяем Табуляцией (\t)
-            // Теперь Anki будет видеть "Текст\nс переносом" как одну ячейку
             exportContent += `"${original}"\t"${translation}"\n`;
         }
 
-        // Сохраняем файл в кодировке UTF-8 с BOM (чтобы Anki точно не перепутала кодировку)
         const blob = new Blob(["\ufeff" + exportContent], {type: 'text/plain;charset=utf-8'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
