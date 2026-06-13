@@ -213,7 +213,7 @@
             </span>
     </div>
     <button class="btn-main" style="background:#38a169" onclick="exportSRT()">Save result</button>
-    <button class="btn-main" style="background:#4c51bf" onclick="exportToAnkiText()">Anki Text Export</button>
+    <button class="btn-main" style="background:#4c51bf" onclick="exportToFlashcards()">Anki / Quizlet Export</button>
 </div>
 
 <div class="grid-header-row" id="headerGrid">
@@ -399,7 +399,7 @@
         a.click();
     }
 
-    function exportToAnkiText() {
+    function exportToFlashcards() {
         const s1 = document.querySelectorAll('#list-sub1 .content');
         const s2 = document.querySelectorAll('#list-sub2 .content');
 
@@ -409,11 +409,12 @@
         if (total === 0) return alert("Table is empty!");
 
         for (let i = 0; i < total; i++) {
-            let original = s1[i].innerHTML.trim();
-            let translation = s2[i].innerHTML.trim();
+            let original = s1[i].innerText.trim();
+            let translation = s2[i].innerText.trim();
 
             if (!original && !translation) continue;
 
+            // Экранирование кавычек для сохранения структуры в CSV/TSV
             original = original.replace(/"/g, '""');
             translation = translation.replace(/"/g, '""');
 
@@ -423,7 +424,7 @@
         const blob = new Blob(["\ufeff" + exportContent], {type: 'text/plain;charset=utf-8'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = "anki_import_fixed.txt";
+        a.download = "flashcards_import.txt";
         a.click();
     }
 </script>
