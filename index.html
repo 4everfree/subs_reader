@@ -409,15 +409,26 @@
         if (total === 0) return alert("Table is empty!");
 
         for (let i = 0; i < total; i++) {
-            let original = s1[i].innerText.trim();
-            let translation = s2[i].innerText.trim();
+            // Испольуем innerHTML, чтобы поймать теги <br> или <div>, созданные редактором
+            let original = s1[i].innerHTML.trim();
+            let translation = s2[i].innerHTML.trim();
 
             if (!original && !translation) continue;
 
-            // Экранирование кавычек для сохранения структуры в CSV/TSV
+            // 1. Стандартизируем переносы строк, превращая их в <br>
+            // (обрабатываем и возможные физические переносы \n, и div-оболочки от контент-эдитора)
+            original = original.replace(/\r?\n/g, '').replace(/<div[^>]*>/gi, '<br>').replace(/<\/div>/gi, '');
+            translation = translation.replace(/\r?\n/g, '').replace(/<div[^>]*>/gi, '<br>').replace(/<\/div>/gi, '');
+
+            // Убираем возможные дубликаты <br> или <br> в самом начале после замен
+            original = original.replace(/^(<br>)+|(<br>)+$/g, '').replace(/(<br>)+/g, '<br>');
+            translation = translation.replace(/^(<br>)+|(<br>)+$/g, '').replace(/(<br>)+/g, '<br>');
+
+            // 2. Экранируем кавычки (заменяем " на "")
             original = original.replace(/"/g, '""');
             translation = translation.replace(/"/g, '""');
 
+            // 3. Собираем строку: теперь каждая карточка гарантированно занимает ровно ОДНУ строку в файле
             exportContent += `"${original}"\t"${translation}"\n`;
         }
 
