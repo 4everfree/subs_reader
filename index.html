@@ -409,27 +409,30 @@
         if (total === 0) return alert("Table is empty!");
 
         for (let i = 0; i < total; i++) {
-            // Испольуем innerHTML, чтобы поймать теги <br> или <div>, созданные редактором
             let original = s1[i].innerHTML.trim();
             let translation = s2[i].innerHTML.trim();
 
             if (!original && !translation) continue;
 
-            // 1. Стандартизируем переносы строк, превращая их в <br>
-            // (обрабатываем и возможные физические переносы \n, и div-оболочки от контент-эдитора)
-            original = original.replace(/\r?\n/g, '').replace(/<div[^>]*>/gi, '<br>').replace(/<\/div>/gi, '');
-            translation = translation.replace(/\r?\n/g, '').replace(/<div[^>]*>/gi, '<br>').replace(/<\/div>/gi, '');
+            // 1. Сначала заменяем закрывающие div и явные br на "<br> " (с пробелом!),
+            // чтобы слова из разных строк гарантированно НЕ склеивались.
+            original = original.replace(/<\/div>/gi, '<br> ').replace(/<br[^>]*>/gi, '<br> ');
+            translation = translation.replace(/<\/div>/gi, '<br> ').replace(/<br[^>]*>/gi, '<br> ');
 
-            // Убираем возможные дубликаты <br> или <br> в самом начале после замен
-            original = original.replace(/^(<br>)+|(<br>)+$/g, '').replace(/(<br>)+/g, '<br>');
-            translation = translation.replace(/^(<br>)+|(<br>)+$/g, '').replace(/(<br>)+/g, '<br>');
+            // 2. Вычищаем открывающие <div> и физические переносы строк \n, которые больше не нужны
+            original = original.replace(/\r?\n/g, '').replace(/<div[^>]*>/gi, '');
+            translation = translation.replace(/\r?\n/g, '').replace(/<div[^>]*>/gi, '');
 
-            // 2. Экранируем кавычки (заменяем " на "")
-            original = original.replace(/"/g, '""');
-            translation = translation.replace(/"/g, '""');
+            // 3. Схлопываем случайные дубликаты <br> и убираем их по краям строки
+            original = original.replace(/^(<br>\s*)+|(<br>\s*)+$/g, '').replace(/(<br>\s*)+/g, '<br> ');
+            translation = translation.replace(/^(<br>\s*)+|(<br>\s*)+$/g, '').replace(/(<br>\s*)+/g, '<br> ');
 
-            // 3. Собираем строку: теперь каждая карточка гарантированно занимает ровно ОДНУ строку в файле
-            exportContent += `"${original}"\t"${translation}"\n`;
+            // 4. Дополнительно убираем двойные пробелы, если они случайно образовались вокруг <br>
+            original = original.replace(/\s+/g, ' ').replace(/ <br>/g, '<br>').trim();
+            translation = translation.replace(/\s+/g, ' ').replace(/ <br>/g, '<br>').trim();
+
+            // Выгружаем чистую строку, разделенную табуляцией
+            exportContent += `${original}\t${translation}\n`;
         }
 
         const blob = new Blob(["\ufeff" + exportContent], {type: 'text/plain;charset=utf-8'});
