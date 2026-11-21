@@ -38,17 +38,21 @@
 
         .grid-header-row {
             display: grid;
-            grid-template-columns: 200px 1fr;
+            grid-template-columns: 140px 1fr;
             position: sticky;
             top: 72px; /* recalculated from JS to match the top bar height */
             z-index: 900;
             background: var(--header-bg);
             border-bottom: 2px solid #1a202c;
+            /* same box as .grid-wrapper, so header and column borders line up */
+            margin: 0 20px;
+            border-left: 1px solid var(--header-bg);
+            border-right: 1px solid var(--header-bg);
         }
 
         .grid-wrapper {
             display: grid;
-            grid-template-columns: 200px 1fr;
+            grid-template-columns: 140px 1fr;
             background: white;
             border-left: 1px solid var(--border-color);
             border-right: 1px solid var(--border-color);
@@ -95,8 +99,9 @@
 
         .cell {
             border-bottom: 1px solid #e2e8f0;
-            padding: 10px;
-            min-height: 70px;
+            padding: 8px 10px;
+            min-height: 40px;
+            box-sizing: border-box;
             display: flex;
             align-items: flex-start;
             gap: 8px;
@@ -107,6 +112,37 @@
         .cell.playing { background: #ebf8ff; }
 
         #list-time .cell { background: var(--time-bg); }
+        /* Timecodes: start + duration, small and quiet, so they don't dictate the row height.
+           The exact SRT timecode is in the tooltip and opens for editing on click. */
+        #list-time .content {
+            font-size: 12px;
+            color: #4a5568;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: text;
+        }
+        #list-time .t-start { font-size: 14px; color: #2d3748; }
+        #list-time .t-dur { font-size: 11px; color: #a0aec0; margin-left: 10px; }
+        /* a long pause before the line (likely a scene change) */
+        #list-time .t-gap { display: block; font-size: 11px; color: #a0aec0; margin-bottom: 2px; }
+        #list-time .cell.has-gap { border-top: 1px dashed #cbd5e0; }
+        /* while editing, the full SRT timecode may wrap to a second line */
+        #list-time .cell.editing .content { white-space: normal; word-break: break-all; }
+        /* In the timecodes column ⠿ and ✕ float over the text (they appear only on hover),
+           so the timecode gets the full column width */
+        #list-time .handle, #list-time .btn-del {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--time-bg);
+            padding: 0 4px;
+            z-index: 1;
+        }
+        #list-time .cell { padding-left: 22px; }     /* room for ⠿ so it never covers the time */
+        #list-time .handle { left: 2px; padding: 0 2px; }
+        #list-time .btn-del { right: 0; }
 
         .resizer {
             position: absolute;
@@ -139,12 +175,27 @@
         .btn-play:hover { filter: brightness(1.1); }
         .cell.playing .btn-play { background: #e53e3e; }
 
-        /* ▶ is shown only on the hovered cell (and on the playing one); its space is kept
+        /* ▶, ⠿ and ✕ are shown only on the hovered or focused cell (▶ also on the playing one).
+           Opacity (not visibility) keeps them reachable with Tab, and their space is kept
            so the text doesn't shift */
         @media (hover: hover) {
-            .btn-play { visibility: hidden; }
-            .cell:hover .btn-play,
-            .cell.playing .btn-play { visibility: visible; }
+            .btn-play, .handle, .btn-del { opacity: 0; }
+            .cell:hover .btn-play, .cell:hover .handle, .cell:hover .btn-del,
+            .cell:focus-within .btn-play, .cell:focus-within .handle, .cell:focus-within .btn-del,
+            .cell.playing .btn-play { opacity: 1; }
+        }
+
+        /* Visible keyboard focus */
+        button:focus-visible, input:focus-visible, label:focus-within > input[type=checkbox] {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        .content:focus-visible, .content:focus {
+            box-shadow: inset 0 0 0 2px var(--accent);
+            border-radius: 3px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .content { transition: none; }
         }
 
         .btn-main {
@@ -195,9 +246,9 @@
 <body>
 
 <div id="format-menu">
-    <button onclick="format('bold')">B</button>
-    <button onclick="format('italic')">I</button>
-    <button onclick="format('underline')">U</button>
+    <button onclick="format('bold')" aria-label="Bold">B</button>
+    <button onclick="format('italic')" aria-label="Italic">I</button>
+    <button onclick="format('underline')" aria-label="Underline">U</button>
 </div>
 
 <div class="top-bar" id="topBar">
@@ -244,6 +295,34 @@
     window.addEventListener('resize', syncStickyTop);
     syncStickyTop();
 
+    // ---------- row heights ----------
+    // Columns are independent lists, so each row is made as tall as its tallest cell
+    // across all columns — otherwise languages drift apart. Re-run (once per frame)
+    // after loading, editing, deleting, dragging and resizing.
+    let rowSyncPending = false;
+    function syncRowHeights() {
+        rowSyncPending = false;
+        refreshTimeLabels();
+        const cols = [...mainGrid.querySelectorAll('.column-list')].map(c => [...c.children]);
+        const all = cols.flat();
+        all.forEach(c => c.style.minHeight = '');                 // 1) reset
+        const rows = Math.max(0, ...cols.map(c => c.length));
+        const max = new Array(rows).fill(0);
+        cols.forEach(list => list.forEach((c, i) => {              // 2) measure (one layout pass)
+            const h = c.offsetHeight;
+            if (h > max[i]) max[i] = h;
+        }));
+        cols.forEach(list => list.forEach((c, i) => c.style.minHeight = max[i] + 'px'));   // 3) apply
+    }
+    function scheduleRowSync() {
+        if (rowSyncPending) return;
+        rowSyncPending = true;
+        requestAnimationFrame(syncRowHeights);
+    }
+    new MutationObserver(scheduleRowSync).observe(mainGrid, {childList: true, subtree: true});
+    mainGrid.addEventListener('input', scheduleRowSync);
+    window.addEventListener('resize', scheduleRowSync);
+
     // ---------- cells ----------
     function setCellBlurState(cell, shouldBeBlurred) {
         const content = cell.querySelector('.content');
@@ -268,10 +347,10 @@
         const div = document.createElement('div');
         div.className = 'cell';
         div.innerHTML = `
-            <span class="handle">⠿</span>
-            ${opts.play ? '<button class="btn-play" title="Play audio">▶</button>' : ''}
+            <span class="handle" title="Drag to move" aria-hidden="true">⠿</span>
+            ${opts.play ? '<button class="btn-play" title="Play" aria-label="Play">▶</button>' : ''}
             <div class="content" spellcheck="false">${contentStr}</div>
-            <button class="btn-del">✕</button>
+            <button class="btn-del" title="Delete" aria-label="Delete">✕</button>
         `;
         const contentDiv = div.querySelector('.content');
         div.querySelector('.btn-del').addEventListener('click', e => {
@@ -302,9 +381,88 @@
                 contentDiv.setAttribute('contenteditable', isBlurred ? 'false' : 'true');
             }, 50);
         } else {
-            contentDiv.setAttribute('contenteditable', 'true');
+            setupTimeCell(div, contentDiv, contentStr);
         }
         return div;
+    }
+
+    // ---------- timecodes ----------
+    // The exact SRT timecode lives in cell.dataset.time (used for alignment, playback and export).
+    // The cell shows "6:12  2.4 s"; hover shows the exact value; click / Enter opens it for editing.
+    const GAP_MARK = 15;  // seconds of silence before a line that get a "gap" mark (≈ scene change)
+
+    function fmtStart(t) {
+        const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = Math.floor(t % 60);
+        const ss = String(sec).padStart(2, '0');
+        return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+    }
+    const fmtDur = d => `${Math.max(0, d).toFixed(1)} s`;
+
+    function renderTime(cell, gap = 0) {
+        const content = cell.querySelector('.content');
+        if (cell.classList.contains('editing')) return;
+        const key = cell.dataset.time + '|' + gap;
+        if (cell._rendered === key) return;        // unchanged — don't touch the DOM (avoids observer loops)
+        cell._rendered = key;
+        const {a, b} = span(cell.dataset.time);
+        content.innerHTML =
+            (gap ? `<span class="t-gap">gap ${Math.round(gap)} s</span>` : '') +
+            `<span class="t-start">${fmtStart(a)}</span><span class="t-dur">${fmtDur(b - a)}</span>`;
+        cell.classList.toggle('has-gap', !!gap);
+        cell.title = cell.dataset.time.replace('-->', '→');
+    }
+
+    // Recompute gap marks from neighbours (rows can be moved or deleted)
+    function refreshTimeLabels() {
+        const cells = [...document.querySelectorAll('#list-time .cell')];
+        let prevEnd = null;
+        for (const c of cells) {
+            const {a, b} = span(c.dataset.time || '');
+            const gap = prevEnd !== null && a - prevEnd >= GAP_MARK ? a - prevEnd : 0;
+            renderTime(c, gap);
+            prevEnd = b;
+        }
+    }
+
+    function setupTimeCell(div, content, timeStr) {
+        div.dataset.time = timeStr.trim();
+        content.setAttribute('contenteditable', 'false');
+        content.tabIndex = 0;
+        content.setAttribute('role', 'button');
+        content.setAttribute('aria-label', 'Edit timecode');
+        renderTime(div);
+
+        const startEdit = () => {
+            if (div.classList.contains('editing')) return;
+            div.classList.add('editing');
+            div._rendered = null;
+            content.textContent = div.dataset.time;
+            content.setAttribute('contenteditable', 'true');
+            content.focus();
+            getSelection().selectAllChildren(content);
+        };
+        const finishEdit = (save) => {
+            if (!div.classList.contains('editing')) return;
+            const v = content.innerText.trim().replace(/\s*-->\s*/, ' --> ');
+            if (save && v !== div.dataset.time) {
+                if (/^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$/.test(v)) div.dataset.time = v;
+                else statusEl.textContent = 'Timecode not changed: use the format 00:01:02,345 --> 00:01:04,000';
+            }
+            div.classList.remove('editing');
+            content.setAttribute('contenteditable', 'false');
+            refreshTimeLabels();
+            renderTime(div);
+        };
+        content.addEventListener('click', startEdit);
+        content.addEventListener('keydown', e => {
+            if (!div.classList.contains('editing')) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(); }
+                return;
+            }
+            if (e.key === 'Enter') { e.preventDefault(); finishEdit(true); }
+            if (e.key === 'Escape') { e.preventDefault(); finishEdit(false); }
+        });
+        content.addEventListener('blur', () => finishEdit(true));
     }
 
     // ---------- audio ----------
@@ -504,7 +662,14 @@
     let curSrc = null;      // the AudioBufferSourceNode that is playing
     let playToken = 0;
 
-    function setBtn(cell, ch) { const b = cell?.querySelector('.btn-play'); if (b) b.textContent = ch; }
+    const BTN_LABEL = {'▶': 'Play', '⏳': 'Loading…', '■': 'Stop'};
+    function setBtn(cell, ch) {
+        const b = cell?.querySelector('.btn-play');
+        if (!b) return;
+        b.textContent = ch;
+        b.title = BTN_LABEL[ch];
+        b.setAttribute('aria-label', BTN_LABEL[ch]);
+    }
 
     function stopPlayback() {
         playToken++;
@@ -581,6 +746,7 @@
         const col = document.getElementById(colId);
         col.classList.toggle('global-blur');
         btn.classList.toggle('active');
+        btn.setAttribute('aria-pressed', String(btn.classList.contains('active')));
         col.querySelectorAll('.cell').forEach(cell => {
             cell.classList.remove('force-blur', 'force-unblur');
             cell.querySelector('.content').setAttribute('contenteditable', col.classList.contains('global-blur') ? 'false' : 'true');
@@ -597,7 +763,7 @@
         headerGrid.innerHTML = '';
         mainGrid.innerHTML = '';
         const n = names.length;
-        const template = ['200px', ...names.map(() => 'minmax(0,1fr)')].join(' ');
+        const template = ['140px', ...names.map(() => 'minmax(0,1fr)')].join(' ');
         headerGrid.style.gridTemplateColumns = template;
         mainGrid.style.gridTemplateColumns = template;
 
@@ -610,6 +776,9 @@
                 const btn = document.createElement('button');
                 btn.className = 'blur-toggle-btn';
                 btn.textContent = '👁';
+                btn.title = 'Blur column';
+                btn.setAttribute('aria-label', `Blur column ${title.main}`);
+                btn.setAttribute('aria-pressed', 'false');
                 btn.onclick = () => toggleColumnBlur(id, btn);
                 h.appendChild(btn);
             }
@@ -644,6 +813,7 @@
                     const tpl = nw.map((w, i) => i === nw.length - 1 ? 'minmax(0,1fr)' : `${w}px`).join(' ');
                     headerGrid.style.gridTemplateColumns = tpl;
                     mainGrid.style.gridTemplateColumns = tpl;
+                    scheduleRowSync();
                 };
                 const onUp = () => {
                     document.removeEventListener('mousemove', onMove);
@@ -749,7 +919,7 @@
     }
 
     function rowsFromTimeColumn() {
-        return [...document.querySelectorAll('#list-time .content')].map(c => span(c.innerText));
+        return [...document.querySelectorAll('#list-time .cell')].map(c => span(c.dataset.time || ''));
     }
 
     // src: {clips: {number: File}} | {full: File} | null
@@ -888,13 +1058,13 @@
 
     // ---------- export ----------
     function exportSRT() {
-        const t = document.querySelectorAll('#list-time .content');
+        const t = [...document.querySelectorAll('#list-time .cell')].map(c => c.dataset.time);
         const cols = subColumns().map(c => c.querySelectorAll('.content'));
         const max = Math.max(t.length, ...cols.map(c => c.length));
         let out = '';
         for (let i = 0; i < max; i++) {
             const texts = cols.map(c => c[i]?.innerHTML.trim() || '');
-            out += `${i + 1}\n${t[i]?.innerText.trim() || '00:00:00,000 --> 00:00:00,000'}\n${texts.join('\n---\n')}\n\n`;
+            out += `${i + 1}\n${t[i] || '00:00:00,000 --> 00:00:00,000'}\n${texts.join('\n---\n')}\n\n`;
         }
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([out], {type: 'text/plain'}));
